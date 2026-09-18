@@ -58,23 +58,9 @@ stages {
 
             sh '''
 
-                for service in \
+                services="auth-service user-service audit-service contact-service customer-service file-service gateway-service invoice-service"
 
-                auth-service \
-
-                user-service \
-
-                audit-service \
-
-                contact-service \
-
-                customer-service \
-
-                file-service \
-
-                gateway-service \
-
-                invoice-service
+                for service in $services
 
                 do
 
@@ -96,23 +82,9 @@ stages {
 
             sh '''
 
-                for service in \
+                services="auth-service user-service audit-service contact-service customer-service file-service gateway-service invoice-service"
 
-                auth-service \
-
-                user-service \
-
-                audit-service \
-
-                contact-service \
-
-                customer-service \
-
-                file-service \
-
-                gateway-service \
-
-                invoice-service
+                for service in $services
 
                 do
 
@@ -186,149 +158,5 @@ stages {
 
                     --password-stdin
 
-                    for service in \
-
-                    audit-service \
-
-                    contact-service \
-
-                    customer-service \
-
-                    file-service \
-
-                    gateway-service \
-
-                    invoice-service
-
-                    do
-
-                        echo "Pushing $service to Nexus"
-
-                        docker tag $service:latest \
-
-                        $NEXUS_REGISTRY/$service:latest
-
-                        docker push \
-
-                        $NEXUS_REGISTRY/$service:latest
-
-                    done
-
-                '''
-
-            }
-
-        }
-
-    }
-
-    stage('EKS Authentication') {
-
-        steps {
-
-            sh '''
-
-                aws eks update-kubeconfig \
-
-                --region $AWS_REGION \
-
-                --name speshway-live-dev-eks
-
-            '''
-
-        }
-
-    }
-
-    stage('Helm Deploy') {
-
-        steps {
-
-            sh '''
-
-                echo "Deploying application using Helm"
-
-                if [ -d helm ]; then
-
-                    helm upgrade --install speshway helm \
-
-                    --namespace dev \
-
-                    --create-namespace
-
-                else
-
-                    echo "Helm directory not found - deployment skipped"
-
-                fi
-
-            '''
-
-        }
-
-    }
-
-    stage('Rollout Status') {
-
-        steps {
-
-            sh '''
-
-                kubectl rollout status deployment \
-
-                --all \
-
-                --namespace dev \
-
-                --timeout=180s
-
-            '''
-
-        }
-
-    }
-
-    stage('Smoke Test') {
-
-        steps {
-
-            sh '''
-
-                echo "Running smoke test..."
-
-                kubectl get pods -n dev
-
-                kubectl get svc -n dev
-
-            '''
-
-        }
-
-    }
-
-}
-
-post {
-
-    success {
-
-        echo 'CI/CD Pipeline completed successfully.'
-
-    }
-
-    failure {
-
-        echo 'CI/CD Pipeline failed. Check the failed stage.'
-
-    }
-
-    always {
-
-        echo 'Pipeline execution completed.'
-
-    }
-
-}
-
-}
+                    services="audit-service contact-service customer-service file-service
  
