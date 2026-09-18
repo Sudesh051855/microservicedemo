@@ -64,7 +64,7 @@ pipeline {
 
                         echo "Building $service"
 
-                        docker build -t $service:latest .
+                       docker build -t $service:latest -f ./$service/Dockerfile .
 
                     done
 
