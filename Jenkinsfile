@@ -14,21 +14,11 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        stage('Test') {
 
             steps {
 
-                checkout scm
-
-            }
-
-        }
-
-        stage('Maven Build') {
-
-            steps {
-
-                sh 'mvn clean package -DskipTests'
+                sh 'mvn clean test'
 
             }
 
@@ -48,13 +38,43 @@ pipeline {
 
         }
 
+        stage('Quality Gate') {
+
+            steps {
+
+                timeout(time: 5, unit: 'MINUTES') {
+
+                    waitForQualityGate abortPipeline: true
+
+                }
+
+            }
+
+        }
+
         stage('Docker Build') {
 
             steps {
 
                 sh '''
 
-                    for service in auth-service user-service audit-service contact-service customer-service file-service gateway-service invoice-service
+                    for service in \
+
+                    auth-service \
+
+                    user-service \
+
+                    audit-service \
+
+                    contact-service \
+
+                    customer-service \
+
+                    file-service \
+
+                    gateway-service \
+
+                    invoice-service
 
                     do
 
@@ -70,7 +90,45 @@ pipeline {
 
         }
 
-        stage('Push 2 Services to ECR') {
+        stage('Trivy Image Scan') {
+
+            steps {
+
+                sh '''
+
+                    for service in \
+
+                    auth-service \
+
+                    user-service \
+
+                    audit-service \
+
+                    contact-service \
+
+                    customer-service \
+
+                    file-service \
+
+                    gateway-service \
+
+                    invoice-service
+
+                    do
+
+                        echo "Scanning $service"
+
+                        trivy image --exit-code 0 --severity HIGH,CRITICAL $service:latest
+
+                    done
+
+                '''
+
+            }
+
+        }
+
+        stage('Push Images') {
 
             steps {
 
@@ -88,25 +146,25 @@ pipeline {
 
                         docker login --username AWS --password-stdin $ECR_REGISTRY
 
-                        docker tag auth-service:latest $ECR_REGISTRY/auth-service:latest
+                        docker tag auth-service:latest \
 
-                        docker push $ECR_REGISTRY/auth-service:latest
+                        $ECR_REGISTRY/auth-service:latest
 
-                        docker tag user-service:latest $ECR_REGISTRY/user-service:latest
+                        docker push \
 
-                        docker push $ECR_REGISTRY/user-service:latest
+                        $ECR_REGISTRY/auth-service:latest
+
+                        docker tag user-service:latest \
+
+                        $ECR_REGISTRY/user-service:latest
+
+                        docker push \
+
+                        $ECR_REGISTRY/user-service:latest
 
                     '''
 
                 }
-
-            }
-
-        }
-
-        stage('Push 6 Services to Nexus') {
-
-            steps {
 
                 withCredentials([usernamePassword(
 
@@ -120,25 +178,129 @@ pipeline {
 
                     sh '''
 
-                        echo "$NEXUS_PASS" | docker login $NEXUS_REGISTRY \
+                        echo "$NEXUS_PASS" | docker login \
 
-                        -u "$NEXUS_USER" --password-stdin
+                        $NEXUS_REGISTRY \
 
-                        for service in audit-service contact-service customer-service file-service gateway-service invoice-service
+                        -u "$NEXUS_USER" \
+
+                        --password-stdin
+
+                        for service in \
+
+                        audit-service \
+
+                        contact-service \
+
+                        customer-service \
+
+                        file-service \
+
+                        gateway-service \
+
+                        invoice-service
 
                         do
 
                             echo "Pushing $service to Nexus"
 
-                            docker tag $service:latest $NEXUS_REGISTRY/$service:latest
+                            docker tag $service:latest \
 
-                            docker push $NEXUS_REGISTRY/$service:latest
+                            $NEXUS_REGISTRY/$service:latest
+
+                            docker push \
+
+                            $NEXUS_REGISTRY/$service:latest
 
                         done
 
                     '''
 
                 }
+
+            }
+
+        }
+
+        stage('EKS Authentication') {
+
+            steps {
+
+                sh '''
+
+                    aws eks update-kubeconfig \
+
+                    --region $AWS_REGION \
+
+                    --name speshway-live-dev-eks
+
+                '''
+
+            }
+
+        }
+
+        stage('Helm Deploy') {
+
+            steps {
+
+                sh '''
+
+                    echo "Deploying application using Helm"
+
+                    if [ -d helm ]; then
+
+                        helm upgrade --install speshway helm \
+
+                        --namespace dev \
+
+                        --create-namespace
+
+                    else
+
+                        echo "Helm directory not found - deployment skipped"
+
+                    fi
+
+                '''
+
+            }
+
+        }
+
+        stage('Rollout Status') {
+
+            steps {
+
+                sh '''
+
+                    kubectl rollout status deployment \
+
+                    --all \
+
+                    --namespace dev \
+
+                    --timeout=180s
+
+                '''
+
+            }
+
+        }
+
+        stage('Smoke Test') {
+
+            steps {
+
+                sh '''
+
+                    echo "Running smoke test..."
+
+                    kubectl get pods -n dev
+
+                    kubectl get svc -n dev
+
+                '''
 
             }
 
@@ -157,6 +319,12 @@ pipeline {
         failure {
 
             echo 'CI/CD Pipeline failed. Check the failed stage.'
+
+        }
+
+        always {
+
+            echo 'Pipeline execution completed.'
 
         }
 
