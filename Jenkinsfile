@@ -216,7 +216,10 @@ pipeline {
 
                 sh '''
 
-                   kubectl rollout status deployment --all --all-namespaces --timeout=180s
+                   for ns in auth gateway user admin employee customer hr task; do
+                       echo "Checking deployments in $ns"
+                        kubectl rollout status deployment --all -n $ns --timeout=180s
+                   done
 
                 '''
 
