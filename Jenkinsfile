@@ -216,13 +216,7 @@ pipeline {
 
                 sh '''
 
-                    kubectl rollout status deployment \
-
-                        --all \
-
-                        --namespace dev \
-
-                        --timeout=180s
+                   kubectl rollout status deployment --all --all-namespaces --timeout=180s
 
                 '''
 
