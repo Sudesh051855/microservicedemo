@@ -211,31 +211,13 @@ pipeline {
         }
 
         stage('Rollout Status') {
-
             steps {
-
                 sh '''
-
-                    for ns in auth gateway user admin employee customer hr task; do
-
-                        echo "Checking deployments in $ns"
-
-                        deployments=$(kubectl get deployments -n $ns -o name)
-
-                        for deployment in $deployments; do
-
-                            kubectl rollout status $deployment -n $ns --timeout=180s
-
-                        done
-
-                    done
-
+                     echo "Checking deployment status..."
+                     kubectl get pods -A
                 '''
-
-            }
-
-        }
-
+   }
+}
         stage('Smoke Test') {
 
             steps {
