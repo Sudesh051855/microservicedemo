@@ -196,7 +196,7 @@ pipeline {
 
                     if [ -d helm ]; then
 
-                        helm upgrade --install speshway helm/crm --namespace dev --create-namespace
+                        helm upgrade --install speshway helm/crm --namespace default
 
                     else
 
